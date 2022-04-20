@@ -1,0 +1,33 @@
+---
+title: "Introduction to causaltrees"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Introduction to causaltrees}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(causaltrees)
+library(phytools)
+```
+
+First we will show that `causaltrees` works as well as a standard Brownian motion based method that uses the whole phylogeny under the best case scenario for Brownian motion, when the data is simulated under a standard Brownian motion process! We simulate one trait (our response) under Brownian motion, and a second (our predictor) just randomly according to a standard Gaussian. Because our response values will not be independent, a standard regression model's assumptions are violated. We can account for this non-independence by modelling our residuals as a multivariate gaussian with a phylogenetic covariance matrix, or we can condition on a random effect reflecting the phylogeny. Traditionally we use a random effect with a phylogenetic covariance matrix as it's hyper distribution, but we show with `causaltrees` that we don't need to condition on the whole phylogeny. First we simulate our data:
+
+```{r bm1}
+tree <- pbtree(n = 100)
+resp <- fastBM(tree)
+pred <- fastBM(tree)
+#pred <- rnorm(100, sd(resp))
+plot(resp ~ pred)
+summary(lm(resp ~ pred))
+```
+
+We will use 

@@ -16,4 +16,9 @@ Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.1.2
 Imports: 
     ape,
-    dagitty
+    dagitty,
+    igraph
+Suggests: 
+    rmarkdown,
+    knitr
+VignetteBuilder: knitr
