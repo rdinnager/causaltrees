@@ -17,6 +17,7 @@ RoxygenNote: 7.1.2
 Imports: 
     ape,
     dagitty,
+    fastmap,
     igraph
 Suggests: 
     rmarkdown,
