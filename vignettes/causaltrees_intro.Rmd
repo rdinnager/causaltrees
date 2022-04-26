@@ -18,11 +18,14 @@ knitr::opts_chunk$set(
 library(causaltrees)
 library(phytools)
 library(ape)
+library(nlme)
+library(lme4)
 ```
 
-First we will show that `causaltrees` works as well as a standard Brownian motion based method that uses the whole phylogeny under the best case scenario for Brownian motion, when the data is simulated under a standard Brownian motion process! We simulate one trait (our response) under Brownian motion, and a second (our predictor) just randomly according to a standard Gaussian. Because our response values will not be independent, a standard regression model's assumptions are violated. We can account for this non-independence by modelling our residuals as a multivariate gaussian with a phylogenetic covariance matrix, or we can condition on a random effect reflecting the phylogeny. Traditionally we use a random effect with a phylogenetic covariance matrix as it's hyper distribution, but we show with `causaltrees` that we don't need to condition on the whole phylogeny. First we simulate our data:
+First we will show that `causaltrees` works as well as a standard Brownian motion based method that uses the whole phylogeny under the best case scenario for Brownian motion, when the data is simulated under a standard Brownian motion process! We simulate two traits (our response and a predictor) under Brownian motion. This causes the phylogeny to be a confounder between our predictor and response. We can account for this confounding by modelling our residuals as a multivariate gaussian with a phylogenetic covariance matrix, or we can condition on a random effect reflecting the phylogeny. Traditionally we use a random effect with a phylogenetic covariance matrix as it's hyper distribution, but we show with `causaltrees` that we don't need to condition on the whole phylogeny. First we simulate our data:
 
 ```{r bm1}
+set.seed(32245)
 tree <- pbtree(n = 100)
 resp <- fastBM(tree)
 pred <- fastBM(tree)
@@ -55,4 +58,39 @@ hist(cvs2, breaks = 100)
 mean(abs(cvs2))
 ```
 
-We will use 
+Now we can see that in this case, a naive model finds a relationship between our predictor and our response, despite the fact that they have each been simulated independently without reference to one another. 
+
+```{r naive}
+plot(resp ~ pred)
+mod <- lm(resp ~ pred)
+abline(coef = mod$coefficients)
+summary(mod)
+```
+
+Next let's see how a standard method, phylogenetic generalised least squares works on this example.
+
+```{r pgls}
+gls_mod <- gls(resp ~ pred,  
+               correlation = corBrownian(phy = tree))
+summary(gls_mod)
+```
+
+So that did what we expected. After accounting for the phylogenetic correlation structure (known in this case to be Brownian motion), the relationship we saw in the raw data is now much reduced and no longer likely to be different from zero. Now let's try the `causaltrees` method. At first we will construct our model in `lme4` ourselves, to show how it works, but `causaltrees` can generate the data and formula for use with `lme4` automatically if desired. The main function in `causaltrees` is `ct_conditioner()`. It constructs what is known as the phylogenetic conditioning factors (or just phylogenetic conditioner, no relation to the hair product).
+
+```{r causaltrees1}
+phy_cond <- ct_conditioner(tree)
+
+phy_cond
+```
+
+`causaltrees` has generated an appropriate data set and a helpful message telling us how to use the data to condition on our phylogeny. Let's try it!
+
+```{r causaltrees2}
+ct_mod <- lmer(resp ~ pred + (0 + phy_cond$ct_weights|phy_cond$ct_group))
+summary(ct_mod)
+
+ct_mod2 <- lmer(resp ~ (0 + phy_cond$ct_weights|phy_cond$ct_group))
+summary(ct_mod2)
+
+ct_mod3 <- lme(resp ~ pred, random = ~ 0 + ct_weights | ct_group, data = phy_cond)
+```
